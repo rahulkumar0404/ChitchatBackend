@@ -14,6 +14,7 @@ const MEMBER_LESS_THAN = 'No new members are provided';
 const MEMBER_EXIST = 'Users are already present in group'
 const INSUFFICIENT_ACCESS_TO_REMOVE =
   'You are not allowed to remove members to groups';
+const ONLY_ONE_ADMIN = "You can't delete yourself. Only one admin in the group."
 export {
   INVALID_SIGNUP_DETAILS,
   INVALID_LOGIN_EMAIL,
@@ -28,4 +29,5 @@ export {
   MEMBER_LESS_THAN,
   MEMBER_EXIST,
   INSUFFICIENT_ACCESS_TO_REMOVE,
+  ONLY_ONE_ADMIN,
 };
