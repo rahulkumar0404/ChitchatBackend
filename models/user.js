@@ -41,7 +41,11 @@ const userSchema = new Schema(
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
-  return this.password = await hash(this.password, 10);
+  return (this.password = await hash(this.password, 10));
+});
+
+userSchema.virtual('fullName').get(function () {
+  return this.first_name + ' ' + this.last_name;
 });
 
 export const User = mongoose.models.User || model('User', userSchema);

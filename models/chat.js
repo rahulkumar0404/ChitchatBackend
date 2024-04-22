@@ -16,8 +16,14 @@ const chatSchema = new Schema(
     },
     members: [
       {
-        type: Types.ObjectId,
-        ref: 'User',
+        user: {
+          type: Types.ObjectId,
+          ref: 'User',
+        },
+        isAdmin: {
+          type: Boolean,
+          default: false,
+        },
       },
     ],
   },
