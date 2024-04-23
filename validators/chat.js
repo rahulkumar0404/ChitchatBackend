@@ -31,13 +31,13 @@ const addMembersSchema = {
       items: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
     },
   },
-  required: ['chatId members'],
+  required: ['chatId', 'members'],
   additionalProperties: false,
   errorMessage: {
     type: 'should be an object',
     properties: {
-      chatId: 'GroupId is Required.',
-      members: 'Members is Required.',
+      chatId: 'Invalid Group or chatId is not Present',
+      members: 'Invalid memberId or members is not present',
     },
   },
 };
@@ -48,11 +48,11 @@ const removeMemberSchema = {
   properties: {
     chatId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
     userId: {
-      type: 'string',
-      pattern: '^[a-fA-F0-9]{24}$',
+      type: 'array',
+      items: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
     },
   },
-  required: ['chatId userId'],
+  required: ['chatId', 'userId'],
   additionalProperties: false,
   errorMessage: {
     type: 'should be an object',
@@ -67,11 +67,20 @@ const updateAdminSchema = {
   $id: '/chat/:groupId/member/:userId',
   type: 'object',
   properties: {
-    groupId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
-    userId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
     isAdmin: { type: 'boolean', enum: [true, false] },
   },
-  required: ['isAdmin', 'groupId', 'userId'],
+  required: ['isAdmin'],
+  additionalProperties: false,
+};
+
+const updateAdminSchemaId = {
+  $id: '/chat/:groupId/member/:userId/2',
+  type: 'object',
+  properties: {
+    groupId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+    userId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+  },
+  required: ['groupId', 'userId'],
   additionalProperties: false,
 };
 
@@ -86,10 +95,57 @@ const renameGroupSchema = {
   additionalProperties: false,
 };
 
+const sendAttachmentSchema = {
+  $id: '/chat/messages',
+  type: 'object',
+  properties: {
+    chatId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+  },
+  required: ['chatId'],
+  additionalProperties: false,
+  errorMessage: {
+    type: 'should be an object',
+    properties: {
+      chatId: 'GroupId is required',
+    },
+  },
+};
+
+const chatIdSchema = {
+  ...sendAttachmentSchema,
+  properties: {
+    id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+  },
+  errorMessage: {
+    type: 'should be an object',
+    properties: {
+      id: 'Id is required',
+    },
+  },
+}; 
+const sendAttachmentFileSchema = {
+  type: 'array',
+  minLength: 1,
+  maxLength: 5,
+  required: ['files'],
+  additionalProperties: false,
+  errorMessage: {
+    type: 'should be an object',
+    properties: {
+      files: 'At least upload one file',
+    },
+  },
+};
+
+
 export {
   createGroupChatSchema,
   addMembersSchema,
   removeMemberSchema,
   updateAdminSchema,
   renameGroupSchema,
+  updateAdminSchemaId,
+  chatIdSchema,
+  sendAttachmentFileSchema,
+  sendAttachmentSchema,
 };

@@ -17,7 +17,7 @@ const registerSchema = {
     },
     bio: { type: 'string' },
   },
-  required: ['first_name', 'last_name', 'user_name', 'password', 'email', 'bio'],
+  required: ['firstName', 'lastName', 'userName', 'password', 'email', 'bio'],
   additionalProperties: false,
   errorMessage: {
     type: 'should be an object',
