@@ -2,7 +2,7 @@ import { tryCatch } from '../middlewares/error.js';
 import { ErrorHandler } from '../utils/utility.js';
 import { Chat } from '../models/chat.js';
 import { User } from '../models/user.js';
-import { emitEvent } from '../utils/features.js';
+import { emitEvent, deleteFilesFromCloudinary } from '../utils/features.js';
 import { Message } from '../models/message.js';
 import {
   GROUP_TOO_SMALL,
@@ -194,9 +194,10 @@ export const updateAdmin = tryCatch(async (req, res, next) => {
 
   await chatGroup.save();
 
-  return res
-    .status(200)
-    .json({ success: true, message: 'Members added as admin successfully' });
+  let userMessage = `Message ${
+    isAdmin ? 'added' : 'removed'
+  } as admin successfully`;
+  return res.status(200).json({ success: true, message: userMessage });
 });
 export const leaveGroup = tryCatch(async (req, res, next) => {
   const chatId = req.params.id;
@@ -353,37 +354,104 @@ export const reNameGroup = tryCatch(async (req, res, next) => {
   return res.status(200).json({ message: 'Group name changed Successfully' });
 });
 
-export const deleteChat = tryCatch(async (req, res, next)=>{
+export const deleteChat = tryCatch(async (req, res, next) => {
   const chatId = req.params.id;
+  const userId = req.userId;
+  const chat = await Chat.findById(chatId);
 
-  const chat = await validateChat(chatId, userId, undefined, false)
-
-  
-})
-const validateChat = async (chatId, userId, members, isAddOrRemoveMember = true) => {
-  const chatGroup = await Chat.findById(chatId);
-  if (!chatGroup) {
+  if (!chat) {
     return next(new ErrorHandler(`${CHAT_NOT_FOUND}`, 400));
   }
 
+  let isAdmin = await isUserAdmin(chat, userId);
+  if (chat.group_chat && !isAdmin) {
+    return next(new ErrorHandler(`${INSUFFICIENT_ACCESS}`, 403));
+  }
+
+  let chatMembers = chat.members.map((member) => member.user.toString());
+  if (!chat.groupChat && !chatMembers.includes(userId)) {
+    return next(new ErrorHandler(`${INSUFFICIENT_ACCESS}`, 403));
+  }
+
+  // we have to delete the message + attachments + files
+
+  const messagesWithAttachments = await Message.find({
+    chat: chatId,
+    attachment: { $exists: true, $ne: [] },
+  });
+  const publicIds = [];
+
+  messagesWithAttachments.forEach(({ attachment }) => {
+    attachment.forEach(({ public_id }) => {
+      publicIds.push(public_id);
+    });
+  });
+
+  await Promise.all([
+    // delete files from cloudinary
+    deleteFilesFromCloudinary(publicIds),
+    chat.deleteOne(),
+    Message.deleteMany({ chat: chatId }),
+  ]);
+
+  emitEvent(req, REFETCH_CHATS, chatMembers);
+
+  return res.status(200).json({ message: 'Chat deleted successfully' });
+});
+
+export const getMessages = tryCatch(async (req, res, next) => {
+  const chatId = req.params.id;
+  const { page = 1 } = req.query;
+  const resultPerPage = 20;
+
+  const skip = (page - 1) * resultPerPage;
+
+  const [messages, totalMessagesCount] = await Promise.all([
+    Message.find({ chat: chatId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(resultPerPage)
+      .populate('sender', 'first_name last_name avatar')
+      .lean(),
+    Message.countDocuments({ chat: chatId }),
+  ]);
+
+  const totalPages = Math.ceil(totalMessagesCount / resultPerPage) || 0;
+
+  return res.status(200).json({
+    messages: messages.reverse(),
+    totalPages,
+  });
+});
+const validateChat = async (
+  chatId,
+  userId,
+  members,
+  isAddOrRemoveMember = true
+) => {
+  const chatGroup = await Chat.findById(chatId);
+  if (!chatGroup) {
+    throw new ErrorHandler(`${CHAT_NOT_FOUND}`, 400);
+  }
+
   if (!chatGroup.group_chat) {
-    return next(new ErrorHandler(`${GROUP_ERROR}`, 400));
+    throw new ErrorHandler(`${GROUP_ERROR}`, 400);
   }
 
   const isAdmin = await isUserAdmin(chatGroup, userId);
   if (!isAdmin) {
-    return next(new ErrorHandler(`${INSUFFICIENT_ACCESS}`, 403));
+    throw new ErrorHandler(`${INSUFFICIENT_ACCESS}`, 403);
   }
 
   if (isAddOrRemoveMember && (!members || members.length < 1)) {
-    return next(new ErrorHandler(`${MEMBER_LESS_THAN}`, 400));
+    throw new ErrorHandler(`${MEMBER_LESS_THAN}`, 400);
   }
 
   return chatGroup;
 };
 
 const isUserAdmin = async (chatGroup, userId) => {
-  const chatMembers = chatGroup.members.map(
+  const chatMembers = chatGroup.members.find(
     (member) => member.user.toString() === userId.toString()
   );
   const isGroupCreator = chatGroup.creator.toString() != userId.toString();
