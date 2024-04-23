@@ -3,21 +3,28 @@ const INVALID_SIGNUP_DETAILS =
 
 const INVALID_LOGIN_EMAIL = 'Invalid Username or Email';
 const INVALID_LOGIN_PASSWORD = 'Invalid Password';
+const INVALID_LOGIN_DETAILS = 'Invalid Login Details';
 const INVALID_USER = 'Please login to send Messages';
 const USER_NOT_FOUND = 'User not found';
 const GROUP_TOO_SMALL = 'Group chat must have at least 3 members';
 const CHAT_NOT_FOUND = 'Chat Not found';
 const GROUP_ERROR = 'No group found for this Id';
-const INSUFFICIENT_ACCESS = 'You are not allowed to add/remove member to groups';
+const INSUFFICIENT_ACCESS =
+  'You are not allowed to add/remove member to groups';
 const GROUP_LIMIT_REACH = 'Group members cannot be greater than 50 members';
 const MEMBER_LESS_THAN = 'No new members are provided';
-const MEMBER_EXIST = 'Users are already present in group'
+const MEMBER_EXIST = 'Users are already present in group';
 const INSUFFICIENT_ACCESS_TO_REMOVE =
   'You are not allowed to remove members to groups';
-const ONLY_ONE_ADMIN = "You can't delete yourself. Only one admin in the group."
+const ONLY_ONE_ADMIN =
+  "You can't delete yourself. Only one admin in the group.";
+const PREVIOUS_USER_EXIST =
+  'User exist with Email or Username. Please try with other details';
+
 export {
   INVALID_SIGNUP_DETAILS,
   INVALID_LOGIN_EMAIL,
+  INVALID_LOGIN_DETAILS,
   INVALID_LOGIN_PASSWORD,
   INVALID_USER,
   USER_NOT_FOUND,
@@ -30,4 +37,5 @@ export {
   MEMBER_EXIST,
   INSUFFICIENT_ACCESS_TO_REMOVE,
   ONLY_ONE_ADMIN,
+  PREVIOUS_USER_EXIST,
 };
