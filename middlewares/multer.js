@@ -6,4 +6,5 @@ export const singleAvatar = (key) => {
   return multerUpload.single(key);
 };
 
-export const singleImageAvatar = singleAvatar("avatar")
+export const singleImageAvatar = singleAvatar('avatar');
+export const attachmentsMulter = multerUpload.array('files', 5);
