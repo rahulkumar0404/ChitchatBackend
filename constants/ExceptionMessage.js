@@ -19,7 +19,7 @@ const INSUFFICIENT_ACCESS_TO_REMOVE =
 const ONLY_ONE_ADMIN =
   "You can't delete yourself. Only one admin in the group.";
 const PREVIOUS_USER_EXIST =
-  'User exist with Email or Username. Please try with other details';
+  'User exist with Email . Please try with other email';
 
 export {
   INVALID_SIGNUP_DETAILS,
