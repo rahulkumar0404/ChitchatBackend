@@ -1,14 +1,13 @@
-import express from 'express';
-import userRoute from './routes/user.js';
-import chatRoute from './routes/chat.js';
-import { connectDb } from './utils/features.js';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import { errorMiddleware } from './middlewares/error.js';
-// import {createUser} from './seeders/user.js'
-dotenv.config({ path: './config/.env' });
-connectDb(process.env.MONGO_URL);
+import chatRoute from './routes/chat.js';
+import userRoute from './routes/user.js';
 // createUser(10);
+// createSampleSingleChats(10);
+// createSampleGroupChats(10);
+// createSampleMessage(30);
+// createMessagesInGroup('66263588df66cdb59d4b045e', 10);
 const app = express();
 
 // Use all the Middleware Here
@@ -23,7 +22,6 @@ app.get('/', (req, res) => {
 });
 
 app.use(errorMiddleware);
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+
+export { app };
+
