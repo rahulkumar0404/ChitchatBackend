@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import { generate } from 'generate-password';
 import { EXPIRES_TIME } from '../constants/constants.js';
 const connectDb = (uri) => {
   mongoose
@@ -29,12 +30,21 @@ const emitEvent = (req, event, users, data) => {
 };
 
 const deleteFilesFromCloudinary = async (publicIds) => {
-  console.log('delete from cloudinary')
-}
+  console.log('delete from cloudinary');
+};
+
+const generatePassword = async (length) => {
+  const password = generate({
+    length: length,
+    numbers: true,
+  });
+  return password;
+};
 export {
   connectDb,
   sendToken,
   cookieOptions,
   emitEvent,
   deleteFilesFromCloudinary,
+  generatePassword,
 };
