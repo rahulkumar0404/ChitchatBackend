@@ -15,6 +15,7 @@ import {
   sendAttachmentFileSchema,
   sendAttachmentSchema,
 } from './chat.js';
+import {adminLoginSchema} from './admin.js'
 const ajv = new Ajv({ allErrors: true });
 
 ajvErrors(ajvKeyword(ajvFormats(ajv)));
@@ -116,6 +117,10 @@ const receiverIdValidator = function (req, res, next){
 const acceptRequestValidator = function (req, res, next){
   validateAjvSchema(acceptRequestSchema, req, res, next)
 }
+
+const adminLoginValidator = function (req, res, next){
+  validateAjvSchema(adminLoginSchema, req, res, next);
+}
 export {
   registerUserValidator,
   loginUserValidator,
@@ -129,4 +134,5 @@ export {
   chatIdValidator,
   receiverIdValidator,
   acceptRequestValidator,
+  adminLoginValidator,
 };
