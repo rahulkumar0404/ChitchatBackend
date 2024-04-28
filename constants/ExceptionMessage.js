@@ -20,9 +20,8 @@ const ONLY_ONE_ADMIN =
   "You can't delete yourself. Only one admin in the group.";
 const PREVIOUS_USER_EXIST =
   'User exist with Email . Please try with other email';
-const INVALID_ADMIN_USER =
-  'Please login to Admin to access admin Panel';
-
+const INVALID_ADMIN_USER = 'Please login to Admin to access admin Panel';
+const PASSWORD_NOT_MATCH = 'Password or Confirm Password do not match';
 export {
   INVALID_SIGNUP_DETAILS,
   INVALID_LOGIN_EMAIL,
@@ -40,5 +39,6 @@ export {
   INSUFFICIENT_ACCESS_TO_REMOVE,
   ONLY_ONE_ADMIN,
   PREVIOUS_USER_EXIST,
+  PASSWORD_NOT_MATCH,
   INVALID_ADMIN_USER,
 };
