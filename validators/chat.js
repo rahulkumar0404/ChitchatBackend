@@ -104,27 +104,34 @@ const sendAttachmentSchema = {
   required: ['chatId'],
   additionalProperties: false,
   errorMessage: {
-    type: 'should be an object',
+    type: 'should be an string',
     properties: {
-      chatId: 'GroupId is required',
+      chatId: 'ChatId is required',
     },
   },
 };
 
 const chatIdSchema = {
-  ...sendAttachmentSchema,
+  $id: '/chat/messages/id',
+  // ...sendAttachmentSchema,
   properties: {
     id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
   },
+  required: ['id'],
+  additionalProperties: false,
   errorMessage: {
-    type: 'should be an object',
+    type: 'should be an string',
     properties: {
       id: 'Id is required',
     },
   },
-}; 
+};
 const sendAttachmentFileSchema = {
+  $id: '/chat/messages/attachment',
   type: 'array',
+  items: {
+    type: 'object',
+  },
   minLength: 1,
   maxLength: 5,
   required: ['files'],
@@ -136,7 +143,6 @@ const sendAttachmentFileSchema = {
     },
   },
 };
-
 
 export {
   createGroupChatSchema,
