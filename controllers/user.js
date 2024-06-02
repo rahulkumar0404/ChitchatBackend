@@ -7,6 +7,7 @@ import {
   INVALID_SIGNUP_DETAILS,
   PREVIOUS_USER_EXIST,
   USER_NOT_FOUND,
+  PASSWORD_NOT_MATCH,
 } from '../constants/ExceptionMessage.js';
 import { tryCatch } from '../middlewares/error.js';
 import { Chat } from '../models/chat.js';
@@ -17,23 +18,36 @@ import {
   emitEvent,
   sendToken,
   generatePassword,
+  uploadFilesToCloudinary,
 } from '../utils/features.js';
 import { ErrorHandler } from '../utils/utility.js';
 import { NEW_REQUEST, REFETCH_CHATS } from '../constants/constants.js';
 import { sendMail } from '../utils/mail.js';
 import { generate } from 'generate-password';
 const registerUser = tryCatch(async (req, res, next) => {
-  const { firstName, lastName, email, password, bio, avatar } = req.body;
+  const { firstName, lastName, email, password, bio, confirmPassword } =
+    req.body;
+  const file = req?.file;
+  if (!firstName || !email || !password || !confirmPassword) {
+    return next(new ErrorHandler(`${INVALID_SIGNUP_DETAILS}`, 400));
+  }
 
-  if (!firstName || !email || !password) {
-    return next(`${INVALID_SIGNUP_DETAILS}`);
+  if (password !== confirmPassword) {
+    return next(new ErrorHandler(`${PASSWORD_NOT_MATCH}`, 400));
   }
 
   let avatarData = {};
-  if (!avatar) {
-    (avatarData['public_id'] = 'aaaa'), (avatarData['url'] = 'sssss');
-  } else avatarData = avatar;
-
+  // if (!file) {
+  //   (avatarData['public_id'] = 'aaaa'), (avatarData['url'] = 'sssss');
+  // } else {
+  if (file) {
+    const result = await uploadFilesToCloudinary([file]);
+    const avatar = {
+      public_id: result[0].public_id,
+      url: result[0].url,
+    };
+    avatarData = avatar;
+  }
   const isUserExistWithEmail = await User.find({ email: email });
 
   if (isUserExistWithEmail.length > 0) {
@@ -115,7 +129,7 @@ const searchUser = tryCatch(async (req, res, next) => {
     ],
   });
   const allUsersFromMyChats = myChats
-    .map((chat) => chat.members.map((member) => member.user))
+    .map((chat) => chat.members.map((member) => member.user.toString()))
     .flat();
 
   const allUserExceptMeAndFriends = await User.find({
@@ -161,7 +175,10 @@ const sendFriendRequest = tryCatch(async (req, res, next) => {
 const acceptFriendRequest = tryCatch(async (req, res, next) => {
   const { senderId, accept } = req.body;
 
-  const request = await Request.findOne({ sender: senderId })
+  const request = await Request.findOne({
+    sender: senderId,
+    receiver: req.userId,
+  })
     .populate('sender', 'first_name last_name')
     .populate('receiver', 'first_name last_name');
 
@@ -216,7 +233,7 @@ const getMyNotification = tryCatch(async (req, res, next) => {
     _id,
     sender: {
       _id: sender._id,
-      name: sender.name,
+      name: `${sender.first_name} ${sender.last_name}`,
       avatar: sender.avatar.url,
     },
   }));
@@ -277,8 +294,10 @@ const getMyFriends = tryCatch(async (req, res, next) => {
 
   if (chatId) {
     const userChats = await Chat.findById(chatId);
-    console.log(userChats)
-    const chatMembers = userChats.members.map(member => member.user.toString())
+    console.log(userChats);
+    const chatMembers = userChats.members.map((member) =>
+      member.user.toString()
+    );
     const availableFriends = friends.filter(
       (friend) => !chatMembers.includes(friend._id)
     );
