@@ -6,17 +6,28 @@ const registerSchema = {
     firstName: nonEmptyString_min3,
     lastName: nonEmptyString_min3,
     password: passwordString,
+    confirmPassword: passwordString,
     email: { type: 'string', format: 'email' },
     avatar: {
-      type: 'object',
-      properties: {
-        public_id: { type: 'string' },
-        url: { type: 'string' },
-      },
+      oneOf: [
+        {
+          type: 'object',
+          properties: {
+            public_id: { type: 'string' },
+            url: { type: 'string' },
+          },
+        },
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
     },
     bio: { type: 'string' },
   },
-  required: ['firstName', 'lastName', 'password', 'email', 'bio'],
+  required: ['firstName', 'lastName', 'password', 'email', 'confirmPassword'],
   additionalProperties: false,
   errorMessage: {
     type: 'should be an object',
@@ -26,7 +37,6 @@ const registerSchema = {
       password: 'Password is Required and minimum 6 character long',
       userName: 'Username is Required and minimum 3 character long',
       email: 'Email is Required',
-      Bio: 'Bio is Required',
     },
   },
 };
