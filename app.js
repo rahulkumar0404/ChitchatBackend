@@ -7,18 +7,22 @@ import adminRoute from './routes/admin.js';
 import chatRoute from './routes/chat.js';
 import userRoute from './routes/user.js';
 import { setUpSocket } from './socket.js';
+import { corsOptions } from './constants/config.js';
+import cors from 'cors';
+import bodyParser from 'body-parser'
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {});
-
+const io = new Server(server, { cors: corsOptions });
+app.set("io", io)
 // Use all the Middleware Here
-app.use(express.json());
 app.use(express.urlencoded());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}))
 app.use(cookieParser());
-
-app.use('/user', userRoute);
-app.use('/chat', chatRoute);
-app.use('/admin', adminRoute);
+app.use(cors(corsOptions));
+app.use('/api/v1/user', userRoute);
+app.use('/api/v1/chat', chatRoute);
+app.use('/api/v1/admin', adminRoute);
 app.get('/', (req, res) => {
   res.send('Welcome to chitchat');
 });
@@ -28,7 +32,6 @@ app.use(errorMiddleware);
 setUpSocket(io);
 
 export { app, server };
-
 
 // to add the dummy data
 // createUser(10);
