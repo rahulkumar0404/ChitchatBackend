@@ -1,31 +1,38 @@
 import { v4 as uuid } from 'uuid';
-import { NEW_MESSAGE, NEW_MESSAGE_ALERT } from './constants/constants.js';
-import { getSockets } from './utils/helper.js';
+import {
+  NEW_MESSAGE,
+  NEW_MESSAGE_ALERT,
+  START_TYPING,
+  STOP_TYPING,
+} from './constants/constants.js';
+import { getMemberIdsFromMember, getSockets } from './utils/helper.js';
 import { Message } from './models/message.js';
+import cookieParser from 'cookie-parser';
+import { socketAuthenticator } from './middlewares/auth.js';
 const userSocketIds = new Map();
 
 const setUpSocket = (io) => {
-  io.use((socket, next) => {});
+  io.use((socket, next) => {
+    cookieParser()(socket.request, socket.request.res, async (error) => {
+      await socketAuthenticator(error, socket, next);
+    });
+  });
   io.on('connection', (socket) => {
-    const user = {
-      _id: 'aaa',
-      name: 'abhishek',
-    };
-
-    userSocketIds.set(user._id, socket.id);
+    const user = socket.user;
+    userSocketIds.set(user._id.toString(), socket.id);
     socket.on(NEW_MESSAGE, async ({ chatId, members, message }) => {
       const messageForRealTime = {
         content: message,
         _id: uuid(),
         sender: {
           _id: user._id,
-          name: user.name,
+          name: `${user.first_name} `,
         },
         chat: chatId,
         createdAt: new Date().toISOString(),
       };
-
-      const membersSocket = getSockets(members);
+      const memberIds = await getMemberIdsFromMember(members)
+      const membersSocket = getSockets(memberIds);
 
       io.to(membersSocket).emit(NEW_MESSAGE, {
         chatId,
@@ -33,8 +40,6 @@ const setUpSocket = (io) => {
       });
 
       io.to(membersSocket).emit(NEW_MESSAGE_ALERT, { chatId });
-
-      //   console.log('messageForRealTime', messageForRealTime);
 
       const messageForDatabase = {
         content: message,
@@ -47,6 +52,18 @@ const setUpSocket = (io) => {
       } catch (error) {
         console.log(error.message);
       }
+    });
+
+    socket.on(START_TYPING, ({ members, chatId }) => {
+      const membersIds = members.map((member) => member.user.toString());
+      const membersSocket = getSockets(membersIds);
+      socket.to(membersSocket).emit(START_TYPING, { chatId });
+    });
+
+    socket.on(STOP_TYPING, ({ members, chatId }) => {
+      const membersIds = members.map((member) => member.user.toString());
+      const membersSocket = getSockets(membersIds);
+      socket.to(membersSocket).emit(STOP_TYPING, { chatId });
     });
 
     socket.on('disconnected', () => {
