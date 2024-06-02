@@ -2,7 +2,11 @@ import { tryCatch } from '../middlewares/error.js';
 import { ErrorHandler } from '../utils/utility.js';
 import { Chat } from '../models/chat.js';
 import { User } from '../models/user.js';
-import { emitEvent, deleteFilesFromCloudinary } from '../utils/features.js';
+import {
+  emitEvent,
+  deleteFilesFromCloudinary,
+  uploadFilesToCloudinary,
+} from '../utils/features.js';
 import { Message } from '../models/message.js';
 import {
   GROUP_TOO_SMALL,
@@ -17,6 +21,7 @@ import {
 import {
   ALERT,
   NEW_ATTACHMENT,
+  NEW_MESSAGE,
   NEW_MESSAGE_ALERT,
   REFETCH_CHATS,
 } from '../constants/constants.js';
@@ -35,6 +40,7 @@ export const newGroupChat = tryCatch(async (req, res, next) => {
 
   allMembers.push({ user: req.userId, isAdmin: true });
 
+  const allMembersUserIds = allMembers.map((member) => member.user.toString());
   await Chat.create({
     group_name: groupName,
     group_chat: true,
@@ -42,7 +48,7 @@ export const newGroupChat = tryCatch(async (req, res, next) => {
     members: allMembers,
   });
 
-  emitEvent(req, ALERT, allMembers, `Welcome to ${groupName} groupChat`);
+  emitEvent(req, ALERT, allMembersUserIds, `Welcome to ${groupName} groupChat`); //allMembers
   emitEvent(req, REFETCH_CHATS, members);
 
   return res
@@ -57,16 +63,16 @@ export const getMyChats = tryCatch(async (req, res, next) => {
       (member) => member._id.toString() !== req.userId.toString()
     )
   );
-  const transformedChats = chats.map((chat) => {
+  const transformedChats = chats.map((chat, index) => {
     return {
       _id: chat._id,
       groupName: chat.group_chat
         ? chat.group_name
-        : `${otherMembers.first_name} ${otherMembers.last_name}`,
+        : `${otherMembers[index][0].first_name} ${otherMembers[index][0].last_name}`,
       groupChat: chat.group_chat,
       avatar: chat.group_chat
-        ? chat.members.slice(0, 3).map(({ avatar }) => avatar.url)
-        : [otherMembers.avatar.url],
+        ? chat.members.slice(0, 3).map(({ avatar }) => avatar?.url)
+        : [otherMembers[index][0].avatar?.url],
       members: chat.members.reduce((prev, curr) => {
         if (curr._id.toString() != req.userId.toString()) {
           prev.push(curr._id);
@@ -76,7 +82,20 @@ export const getMyChats = tryCatch(async (req, res, next) => {
       // lastMessage: chat.lastMessage,
     };
   });
-  return res.status(200).json({ success: true, chats: transformedChats });
+
+  const sortedTransformedChats = transformedChats.sort((a, b) => {
+    const groupNameA = a.groupName.toUpperCase();
+    const groupNameB = b.groupName.toUpperCase();
+    if (groupNameA > groupNameB) {
+      return 1;
+    }
+    if (groupNameA < groupNameB) {
+      return -1;
+    }
+    return 0;
+  });
+
+  return res.status(200).json({ success: true, chats: sortedTransformedChats });
 });
 
 export const getMyGroups = tryCatch(async (req, res, next) => {
@@ -278,11 +297,11 @@ export const sendAttachments = tryCatch(async (req, res, next) => {
 
   // Upload files here
 
-  const attachments = [];
+  const attachment = await uploadFilesToCloudinary(files);
 
   const messageForDb = {
     content: '',
-    attachments,
+    attachment,
     sender: user._id,
     chat: chatId,
   };
@@ -295,12 +314,13 @@ export const sendAttachments = tryCatch(async (req, res, next) => {
     },
   };
   const message = await Message.create(messageForDb);
-  emitEvent(req, NEW_ATTACHMENT, chat.members, {
+  const chatUsers = chat.members.map((member) => member.user.toString());
+  emitEvent(req, NEW_MESSAGE, chatUsers, {
     message: messageForRealTime,
     chatId,
   });
 
-  emitEvent(req, NEW_MESSAGE_ALERT, chat.members, {
+  emitEvent(req, NEW_MESSAGE_ALERT, chatUsers, {
     chatId,
   });
   return res.status(200).json({
@@ -317,17 +337,24 @@ export const getChatDetails = tryCatch(async (req, res, next) => {
     if (!chat) {
       return next(new ErrorHandler(`${CHAT_NOT_FOUND}`, 400));
     }
-
-    let newChats = chat.map((chat) =>
-      chat.members.map(({ _id, first_name, avatar, last_name }) => ({
-        _id,
-        first_name,
-        last_name,
-        avatar: avatar.url,
+    let newChats = Object.assign(
+      {},
+      ...chat.map((chat) => ({
+        ['chats']: {
+          groupName: chat.group_name,
+          groupChat: chat.group_chat,
+          members: chat.members.map(
+            ({ _id, first_name, avatar, last_name }) => ({
+              _id,
+              name: `${first_name} ${last_name}`,
+              avatar: avatar.url,
+            })
+          ),
+        },
       }))
     );
 
-    return res.status(200).json({ success: true, newChats });
+    return res.status(200).json({ success: true, chat: newChats.chats });
   } else {
     const chat = await Chat.findById(id);
     if (!chat) {
@@ -345,12 +372,12 @@ export const reNameGroup = tryCatch(async (req, res, next) => {
   const { name } = req.body;
 
   const chat = await validateChat(chatId, req.userId, undefined, false);
-
+  const chatUsers = chat.members((member) => member.user.toString());
   chat.group_name = name;
 
   await chat.save();
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  emitEvent(req, REFETCH_CHATS, chatUsers); //chat.members
   return res.status(200).json({ message: 'Group name changed Successfully' });
 });
 
@@ -422,6 +449,12 @@ export const getMessages = tryCatch(async (req, res, next) => {
     messages: messages.reverse(),
     totalPages,
   });
+});
+
+export const isGroupChat = tryCatch(async (req, res, next) => {
+  const { id } = req.params;
+  const chat = await Chat.findOne({ _id: id });
+  return res.status(200).json({ isGroupChat: chat.group_chat });
 });
 const validateChat = async (
   chatId,
@@ -510,5 +543,18 @@ const aggregation = async (matchObj) => {
         },
       },
     },
+    {
+      $sort: {
+        group_name: 1, // Sort ascending by first_name
+      },
+    },
+    // {
+    //   $group: {
+    //     _id: '$_id',
+    //     group_name: { $first: '$group_name' },
+    //     group_chat: { $first: '$group_chat' },
+    //     members: { $push: '$members' },
+    //   },
+    // },
   ]);
 };
