@@ -4,7 +4,7 @@ import {
   NEW_MESSAGE_ALERT,
   START_TYPING,
   STOP_TYPING,
-} from './constants/constants.js';
+} from './constants/events.js';
 import { getMemberIdsFromMember, getSockets } from './utils/helper.js';
 import { Message } from './models/message.js';
 import cookieParser from 'cookie-parser';
@@ -31,7 +31,7 @@ const setUpSocket = (io) => {
         chat: chatId,
         createdAt: new Date().toISOString(),
       };
-      const memberIds = await getMemberIdsFromMember(members)
+      const memberIds = await getMemberIdsFromMember(members);
       const membersSocket = getSockets(memberIds);
 
       io.to(membersSocket).emit(NEW_MESSAGE, {
