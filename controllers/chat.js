@@ -24,7 +24,7 @@ import {
   NEW_MESSAGE,
   NEW_MESSAGE_ALERT,
   REFETCH_CHATS,
-} from '../constants/constants.js';
+} from '../constants/events.js';
 import mongoose from 'mongoose';
 export const newGroupChat = tryCatch(async (req, res, next) => {
   const { groupName, members } = req.body;
