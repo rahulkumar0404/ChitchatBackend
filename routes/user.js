@@ -40,7 +40,7 @@ app.post(
   acceptRequestValidator,
   acceptFriendRequest
 );
-app.get('/notifications', getMyNotification);
+app.get('/notifications', isAuthenticated, getMyNotification);
 
 app.get('/friends', isAuthenticated, getMyFriends)
 export default app;
