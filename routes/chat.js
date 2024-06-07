@@ -6,6 +6,7 @@ import {
   getMessages,
   getMyChats,
   getMyGroups,
+  isGroupChat,
   leaveGroup,
   newGroupChat,
   reNameGroup,
@@ -41,6 +42,7 @@ app.put(
   updateAdmin
 );
 app.delete('/leave/:id', leaveGroup);
+app.get('/groupId/:id', chatIdValidator, isGroupChat)
 
 // send attachment
 
