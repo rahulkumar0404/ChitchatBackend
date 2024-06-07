@@ -21,7 +21,7 @@ import {
   uploadFilesToCloudinary,
 } from '../utils/features.js';
 import { ErrorHandler } from '../utils/utility.js';
-import { NEW_REQUEST, REFETCH_CHATS } from '../constants/constants.js';
+import { NEW_REQUEST, REFETCH_CHATS } from '../constants/events.js';
 import { sendMail } from '../utils/mail.js';
 import { generate } from 'generate-password';
 const registerUser = tryCatch(async (req, res, next) => {
@@ -185,7 +185,7 @@ const acceptFriendRequest = tryCatch(async (req, res, next) => {
   if (!request) {
     return next(new ErrorHandler('Request not found', 400));
   }
-  console.log(request);
+
   if (request.receiver._id.toString() !== req.userId.toString()) {
     return next(
       new ErrorHandler('You are not authorized to accept this request', 401)
@@ -224,11 +224,12 @@ const acceptFriendRequest = tryCatch(async (req, res, next) => {
 });
 
 const getMyNotification = tryCatch(async (req, res, next) => {
-  const request = await Request.find({ receiver: req.userId }).populate({
+  const request = await Request.find({
+    $and: [{ receiver: req.userId }, { status: 'pending' }],
+  }).populate({
     path: 'sender',
     select: 'first_name last_name avatar',
   });
-
   const allRequests = request.map(({ _id, sender }) => ({
     _id,
     sender: {
@@ -279,22 +280,23 @@ const getMyFriends = tryCatch(async (req, res, next) => {
       },
       { group_chat: false },
     ],
-  }).populate('members.user', 'first_name last_name avatar');
+  })
+    .populate('members.user', 'first_name last_name avatar')
+    .lean();
 
   const friends = chats.map(({ members }) => {
     const otherUser = members.find(
       (member) => member.user._id.toString() !== req.userId.toString()
     );
     return {
-      _id: otherUser._id.toString(),
+      _id: otherUser.user._id.toString(),
       name: `${otherUser.user.first_name} ${otherUser.user.last_name}`,
-      avatar: otherUser.user.avatar.url,
+      avatar: otherUser.user.avatar?.url,
     };
   });
 
   if (chatId) {
     const userChats = await Chat.findById(chatId);
-    console.log(userChats);
     const chatMembers = userChats.members.map((member) =>
       member.user.toString()
     );
