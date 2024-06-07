@@ -26,6 +26,7 @@ import {
   REFETCH_CHATS,
 } from '../constants/events.js';
 import mongoose from 'mongoose';
+import { getMemberIdsFromMember } from '../utils/helper.js';
 export const newGroupChat = tryCatch(async (req, res, next) => {
   const { groupName, members } = req.body;
 
@@ -105,7 +106,7 @@ export const getMyGroups = tryCatch(async (req, res, next) => {
     _id,
     groupChat: group_chat,
     groupName: group_name,
-    avatar: members.slice(0, 3).map(({ avatar }) => avatar.url),
+    avatar: members.slice(0, 3).map(({ avatar }) => avatar?.url),
   }));
 
   return res.status(200).json({ success: true, groups: groups });
@@ -143,14 +144,15 @@ export const addMembers = tryCatch(async (req, res, next) => {
     .map((member) => `${member.first_name} ${member.last_name}`)
     .join(',');
 
+  const chatMemberIds = await getMemberIdsFromMember(chat.members);
   emitEvent(
     req,
     ALERT,
-    chat.members,
+    chatMemberIds,
     `${allUsersName} has been added to the group`
   );
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  emitEvent(req, REFETCH_CHATS, chatMemberIds);
   return res
     .status(200)
     .json({ success: true, message: 'Member added successfully' });
@@ -159,7 +161,7 @@ export const addMembers = tryCatch(async (req, res, next) => {
 export const removeMember = tryCatch(async (req, res, next) => {
   const { userId, chatId } = req.body;
   const chat = await validateChat(chatId, req.userId, userId);
-
+  const prevChatMemberIds = await getMemberIdsFromMember(chat.members);
   let chatMembers = chat.members.filter(
     (member) => !userId.includes(member.user.toString())
   );
@@ -176,7 +178,7 @@ export const removeMember = tryCatch(async (req, res, next) => {
 
   await chat.save();
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  emitEvent(req, REFETCH_CHATS, prevChatMemberIds);
   return res
     .status(200)
     .json({ success: true, message: 'Members removed successfully' });
@@ -231,10 +233,10 @@ export const leaveGroup = tryCatch(async (req, res, next) => {
     return next(new ErrorHandler(`${GROUP_ERROR}`, 400));
   }
 
-  if (chatGroup.members.length <= 3) {
+  if (chatGroup.members.length < 3) {
     return next(new ErrorHandler(`${GROUP_TOO_SMALL}`, 403));
   }
-
+  const groupName = chatGroup.group_name;
   const userData = chatGroup.members.filter(
     (member) => member.user.toString() === userId.toString()
   );
@@ -266,16 +268,13 @@ export const leaveGroup = tryCatch(async (req, res, next) => {
 
   const [user] = await Promise.all([User.findById(userId), chatGroup.save()]);
 
-  emitEvent(
-    req,
-    ALERT,
-    chatGroup.members.user,
-    ` ${user.fullName} has left the group`
-  );
+  const chatMemberIds = await getMemberIdsFromMember(chatGroup.members);
+  emitEvent(req, ALERT, chatMemberIds, `${user.fullName} has left the group`);
 
-  return res
-    .status(200)
-    .json({ success: true, message: `${user.fullName} has left the group` });
+  return res.status(200).json({
+    success: true,
+    message: `You have successfully left the ${groupName} group`,
+  });
 });
 
 export const sendAttachments = tryCatch(async (req, res, next) => {
@@ -334,7 +333,12 @@ export const getChatDetails = tryCatch(async (req, res, next) => {
   const id = req.params.id;
   if (req.query.populate === 'true') {
     const chat = await fetchUserChats(id);
-    if (!chat) {
+    // const chat = await Chat.find({
+    //   _id: new mongoose.Types.ObjectId(id),
+    // })
+    //   .populate('members.user', 'first_name last_name avatar')
+    //   .lean();
+    if (chat.length < 1) {
       return next(new ErrorHandler(`${CHAT_NOT_FOUND}`, 400));
     }
     let newChats = Object.assign(
@@ -347,7 +351,7 @@ export const getChatDetails = tryCatch(async (req, res, next) => {
             ({ _id, first_name, avatar, last_name }) => ({
               _id,
               name: `${first_name} ${last_name}`,
-              avatar: avatar.url,
+              avatar: avatar?.url,
             })
           ),
         },
@@ -372,7 +376,7 @@ export const reNameGroup = tryCatch(async (req, res, next) => {
   const { name } = req.body;
 
   const chat = await validateChat(chatId, req.userId, undefined, false);
-  const chatUsers = chat.members((member) => member.user.toString());
+  const chatUsers = await getMemberIdsFromMember(chat.members);
   chat.group_name = name;
 
   await chat.save();
@@ -432,6 +436,17 @@ export const getMessages = tryCatch(async (req, res, next) => {
   const resultPerPage = 20;
 
   const skip = (page - 1) * resultPerPage;
+  const chat = await Chat.findById(chatId);
+  if (!chat) {
+    return next(new ErrorHandler('Chat not found', 404));
+  }
+
+  const chatMemberIds = await getMemberIdsFromMember(chat.members);
+  if (!chatMemberIds.includes(req.userId.toString())) {
+    return next(
+      new ErrorHandler('You are not allowed to access this chat', 403)
+    );
+  }
 
   const [messages, totalMessagesCount] = await Promise.all([
     Message.find({ chat: chatId })
@@ -487,7 +502,8 @@ const isUserAdmin = async (chatGroup, userId) => {
   const chatMembers = chatGroup.members.find(
     (member) => member.user.toString() === userId.toString()
   );
-  const isGroupCreator = chatGroup.creator.toString() != userId.toString();
+  const isGroupCreator =
+    chatGroup.groupChat && chatGroup.creator.toString() != userId.toString();
   if (chatMembers) {
     return isGroupCreator || chatMembers.isAdmin;
   }
