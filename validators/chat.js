@@ -88,10 +88,9 @@ const renameGroupSchema = {
   $id: '/chat/:id',
   type: 'object',
   properties: {
-    id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
     name: nonEmptyString_min3,
   },
-  required: ['name', 'id'],
+  required: ['name'],
   additionalProperties: false,
 };
 
