@@ -19,10 +19,11 @@ import {
   loginUserValidator,
   receiverIdValidator,
   acceptRequestValidator,
+  forgetPasswordValidator,
 } from '../validators/jsonValidator.js';
 app.post('/signup', singleImageAvatar, registerUserValidator, registerUser);
 app.post('/login', loginUserValidator, login);
-app.post('/forget-password', forgetPassword)
+app.post('/forget-password', forgetPasswordValidator, forgetPassword);
 // After user must be logged in
 app.get('/profile', isAuthenticated, getMyProfile);
 app.get('/logout', isAuthenticated, logout);
@@ -42,5 +43,5 @@ app.post(
 );
 app.get('/notifications', isAuthenticated, getMyNotification);
 
-app.get('/friends', isAuthenticated, getMyFriends)
+app.get('/friends', isAuthenticated, getMyFriends);
 export default app;
