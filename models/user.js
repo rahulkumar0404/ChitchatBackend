@@ -9,6 +9,9 @@ const userSchema = new Schema(
     last_name: {
       type: String,
     },
+    bio: {
+      type: String,
+    },
     username: {
       type: String,
       required: true,
@@ -27,11 +30,9 @@ const userSchema = new Schema(
     avatar: {
       public_id: {
         type: String,
-        required: true,
       },
       url: {
         type: String,
-        required: true,
       },
     },
   },
