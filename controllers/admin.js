@@ -66,7 +66,8 @@ const getAllUsers = tryCatch(async (req, res, next) => {
 const getAllChats = tryCatch(async (req, res, next) => {
   const chats = await Chat.find({})
     .populate('members.user', 'first_name last_name avatar')
-    .populate('creator', 'first_name last_name avatar');
+    .populate('creator', 'first_name last_name avatar')
+    .lean();
 
   const transformedChat = await Promise.all(
     chats.map(async ({ members, _id, group_chat, group_name, creator }) => {
@@ -77,23 +78,29 @@ const getAllChats = tryCatch(async (req, res, next) => {
         _id,
         groupChat: group_chat,
         name: group_name,
-        avatar: members.map((member) => member.user.avatar.url),
-        members: members.map(({ _id, user }) => ({
-          _id,
-          name: `${user.first_name} ${user.last_name}`,
-          avatar: user.avatar.url,
-        })),
+        avatar: members.map((member) => member.user?.avatar?.url),
+        members: members.map(({ _id, user }) => {
+          if (!user) {
+            console.log(_id);
+          }
+          return {
+            _id,
+            name: `${user.first_name} ${user.last_name}`,
+            avatar: user?.avatar?.url,
+          };
+        }),
         creator: {
           name: group_chat
             ? `${creator.first_name} ${creator.last_name}`
             : 'None',
-          avatar: group_chat ? creator.avatar.url : '',
+          avatar: group_chat ? creator.avatar?.url : '',
         },
         totalMembers: members.length,
         totalMessages,
       };
     })
   );
+  console.log(transformedChat);
   return res.status(200).json({ chats: transformedChat });
 });
 
