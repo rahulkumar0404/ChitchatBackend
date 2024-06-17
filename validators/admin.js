@@ -4,7 +4,7 @@ const adminLoginSchema = {
   $id: '/admin/login',
   type: 'object',
   properties: {
-    userName: { type: 'string', minLength: 6, required: true },
+    userName: { type: 'string', minLength: 6 },
     password: passwordString,
   },
   required: ['userName', 'password'],
