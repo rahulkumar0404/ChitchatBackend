@@ -28,6 +28,7 @@ const registerUser = tryCatch(async (req, res, next) => {
   const { firstName, lastName, email, password, bio, confirmPassword } =
     req.body;
   const file = req?.file;
+  const userBio = bio || 'Hey! I am using chitchat';
   if (!firstName || !email || !password || !confirmPassword) {
     return next(new ErrorHandler(`${INVALID_SIGNUP_DETAILS}`, 400));
   }
@@ -37,9 +38,6 @@ const registerUser = tryCatch(async (req, res, next) => {
   }
 
   let avatarData = {};
-  // if (!file) {
-  //   (avatarData['public_id'] = 'aaaa'), (avatarData['url'] = 'sssss');
-  // } else {
   if (file) {
     const result = await uploadFilesToCloudinary([file]);
     const avatar = {
@@ -61,16 +59,17 @@ const registerUser = tryCatch(async (req, res, next) => {
     password: password,
     username: userName,
     email,
-    bio,
+    bio: userBio,
     avatar: avatarData,
   });
   let userMessage = `<div>Your Username is <b> ${userName}</b>. You can login with this Username or Email </div>`;
   await sendMail(email, firstName, userMessage);
   const token = sendToken(user);
-  return res
-    .status(201)
-    .cookie('chitChat', token, cookieOptions)
-    .json({ _id: user._id.toString(), message: 'User Created successfully' });
+  return res.status(201).cookie('chitChat', token, cookieOptions).json({
+    _id: user._id.toString(),
+    user,
+    message: 'User Created successfully',
+  });
 });
 
 const login = tryCatch(async (req, res, next) => {
@@ -94,7 +93,7 @@ const login = tryCatch(async (req, res, next) => {
   return res
     .status(200)
     .cookie('chitChat', token, cookieOptions)
-    .json({ success: true, message: `Welcome Back ${user.first_name}` });
+    .json({ success: true, user, message: `Welcome Back ${user.first_name}` });
 });
 
 const getMyProfile = tryCatch(async (req, res, next) => {
@@ -249,25 +248,25 @@ const forgetPassword = tryCatch(async (req, res, next) => {
   const response = await axios.post(
     `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecretKey}&response=${recaptchaValue}`
   );
-  console.log(response);
-  if (response.success) {
-    return next(new ErrorHandler('Captcha Verification failed'));
-  }
-  const user = await User.find({ username: userName });
+  if (response.data.success) {
+    const user = await User.findOne({ username: userName });
+    if (user) {
+      const password = await generatePassword(8);
+      let userMessage = `Your New Password is <b>${password}</b>.<br>You can login with this Password`;
 
-  if (!user) {
-    return next(new ErrorHandler('User not found', 400));
-  }
-  const password = await generatePassword(8);
-  let userMessage = `Your New Password is <b>${password}</b>.<br>You can login with this Password`;
-  // await user.updateOne({ password: password });
+      await user.updateOne({ password: password });
+      await user.save();
+      await sendMail(user.email, user.first_name, userMessage);
 
-  await sendMail(user.email, user.first_name, userMessage);
-  // const token = sendToken(user); cookie('chitChat', token, cookieOptions)
-  return res.status(200).json({
-    // _id: user._id.toString(),
-    message: 'New Password send successfully to your email',
-  });
+      return res
+        .status(200)
+        .json({ message: 'New Password send successfully to your email' });
+    } else {
+      return next(new ErrorHandler('User are not found', 404));
+    }
+  } else {
+    return next(new ErrorHandler('Recaptcha verification failed', 400));
+  }
 });
 
 const getMyFriends = tryCatch(async (req, res, next) => {
