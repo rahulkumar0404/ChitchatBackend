@@ -1,4 +1,8 @@
-import { nonEmptyString_min3, passwordString } from './schemaDefinition.js';
+import {
+  nonEmptyString,
+  nonEmptyString_min3,
+  passwordString,
+} from './schemaDefinition.js';
 const registerSchema = {
   $id: '/user/signup',
   type: 'object',
@@ -92,4 +96,28 @@ const acceptRequestSchema = {
   },
 };
 
-export { registerSchema, loginSchema, requestIdSchema, acceptRequestSchema };
+const forgetPasswordSchema = {
+  $id: '/user/forgetPassword',
+  type: 'object',
+  properties: {
+    userName: nonEmptyString_min3,
+    recaptchaValue: nonEmptyString,
+  },
+  required: ['userName', 'recaptchaValue'],
+  additionalProperties: false,
+  errorMessage: {
+    type: 'should be an object',
+    required: {
+      userName: 'Username is Required and minimum 3 character long',
+      recaptchaValue: 'captcha is Required',
+    },
+  },
+};
+
+export {
+  registerSchema,
+  loginSchema,
+  requestIdSchema,
+  acceptRequestSchema,
+  forgetPasswordSchema,
+};
