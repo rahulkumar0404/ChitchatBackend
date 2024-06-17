@@ -42,14 +42,17 @@ export const newGroupChat = tryCatch(async (req, res, next) => {
   allMembers.push({ user: req.userId, isAdmin: true });
 
   const allMembersUserIds = allMembers.map((member) => member.user.toString());
-  await Chat.create({
+  const chat = await Chat.create({
     group_name: groupName,
     group_chat: true,
     creator: req.userId,
     members: allMembers,
   });
 
-  emitEvent(req, ALERT, allMembersUserIds, `Welcome to ${groupName} groupChat`); //allMembers
+  emitEvent(req, ALERT, allMembersUserIds, {
+    message: `Welcome to ${groupName} groupChat`,
+    chatId : chat._id.toString()
+  }); //allMembers
   emitEvent(req, REFETCH_CHATS, members);
 
   return res
@@ -269,7 +272,10 @@ export const leaveGroup = tryCatch(async (req, res, next) => {
   const [user] = await Promise.all([User.findById(userId), chatGroup.save()]);
 
   const chatMemberIds = await getMemberIdsFromMember(chatGroup.members);
-  emitEvent(req, ALERT, chatMemberIds, `${user.fullName} has left the group`);
+  emitEvent(req, ALERT, chatMemberIds, {
+    message: `${user.fullName} has left the group`,
+    chatId
+  });
 
   return res.status(200).json({
     success: true,
