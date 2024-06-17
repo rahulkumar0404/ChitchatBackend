@@ -3,7 +3,7 @@ import ajvKeyword from 'ajv-keywords';
 import ajvFormats from 'ajv-formats'
 import ajvErrors from 'ajv-errors';
 import { ErrorHandler } from '../utils/utility.js';
-import { registerSchema, loginSchema, requestIdSchema, acceptRequestSchema } from './user.js';
+import { registerSchema, loginSchema, requestIdSchema, acceptRequestSchema, forgetPasswordSchema } from './user.js';
 import {
   addMembersSchema,
   createGroupChatSchema,
@@ -121,6 +121,10 @@ const acceptRequestValidator = function (req, res, next){
 const adminLoginValidator = function (req, res, next){
   validateAjvSchema(adminLoginSchema, req, res, next);
 }
+
+const forgetPasswordValidator = function (req, res, next) {
+  validateAjvSchema(forgetPasswordSchema, req, res, next);
+};
 export {
   registerUserValidator,
   loginUserValidator,
@@ -135,4 +139,5 @@ export {
   receiverIdValidator,
   acceptRequestValidator,
   adminLoginValidator,
+  forgetPasswordValidator,
 };
