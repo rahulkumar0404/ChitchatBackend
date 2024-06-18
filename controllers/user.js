@@ -251,10 +251,12 @@ const forgetPassword = tryCatch(async (req, res, next) => {
   if (response.data.success) {
     const user = await User.findOne({ username: userName });
     if (user) {
-      const password = await generatePassword(8);
+      let randomPassword = await generatePassword(10);
+      const password =
+        randomPassword.substring(0, 5) + '@' + randomPassword.substring(5, 10);
       let userMessage = `Your New Password is <b>${password}</b>.<br>You can login with this Password`;
-
-      await user.updateOne({ password: password });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await user.updateOne({ password: hashedPassword });
       await user.save();
       await sendMail(user.email, user.first_name, userMessage);
 
